@@ -1,6 +1,6 @@
 import telebot
 
-bot = telebot.TeleBot('7260906472:AAFwC4N3Z1FVUL2pcK5G4RviCLhKYKnJkqI')
+# bot = telebot.TeleBot('')
 
 
 
