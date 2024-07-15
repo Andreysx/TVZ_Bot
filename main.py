@@ -1,43 +1,23 @@
+import os
+
 import telebot
 from telebot import types
-import pandas as pd
-import os
-import sqlite3
-import math
+from db import create_db
+from excel_parser import handle_excel_file
+from bot_handlers import handle_search
 
-# BOT_TOKEN = '7260906472:AAFwC4N3Z1FVUL2pcK5G4RviCLhKYKnJkqI'
+# BOT_TOKEN = ''
 """Place your telegram bot token"""
 bot = telebot.TeleBot(BOT_TOKEN)
+
 ADMIN_IDS = [476525173]
 """Add admin ids"""
-
-
-# Создание базы данных и таблицы, если их еще нет
-def create_db():
-    """Creating database with main table (data) if they not exist"""
-    connection = sqlite3.connect('database.db')
-    cur = connection.cursor()
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS data (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        article TEXT,
-        name TEXT,
-        quantity INTEGER,
-        price_one REAL,
-        amount REAL,
-        weight REAL,
-        eng_name TEXT)
-
-        ''')
-    connection.commit()
-    cur.close()
-    connection.close()
 
 
 # Описать функционал бота.
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
-    """Handles pressing the "Start" button - /start"""
+    """Handles pressing the "Start" button - /start."""
     markup = types.ReplyKeyboardMarkup(row_width=1)
     start_button = types.KeyboardButton('Начать работу')
     markup.add(start_button)
@@ -49,7 +29,7 @@ def send_welcome(message):
 
 @bot.message_handler(func=lambda message: message.text == 'Начать работу')
 def show_main_menu(message):
-    """Displays buttons with basic functionality"""
+    """Displays buttons with basic functionality."""
     markup = types.ReplyKeyboardMarkup(row_width=2)
     btn1 = types.KeyboardButton('Загрузить таблицу Exel')
     btn2 = types.KeyboardButton('Найти товар по артиклу')
@@ -71,12 +51,14 @@ def prompt_article_search(message):
     """Handles a click on the "Search Article" button and prompts the user to enter the article,
     then passes control to the handle_search function."""
     msg = bot.send_message(message.chat.id, "Введите артикул для поиска:")
-    bot.register_next_step_handler(msg, handle_search)
+    bot.register_next_step_handler(msg, handle_search, bot)
+
 
 
 # Парсинг exel файла в дб(squlite) + добавление в дб
 @bot.message_handler(content_types=['document'])
 def handle_document(message):
+    """This function wait for input file and handle him."""
     if message.from_user.id not in ADMIN_IDS:
         # проверка, чтобы только пользователи из списка ADMIN_IDS могли отправить Excel файл
         bot.reply_to(message, "У вас нет прав для загрузки файлов.")
@@ -100,71 +82,17 @@ def handle_document(message):
     bot.reply_to(message, 'Файл успешно загружен, начинаю обработку...')
 
     try:
-        # Чтение и обработка Excel файла
-        df = pd.read_excel(final_doc)
-        # columns = df.iloc[:]
-        # df.columns = columns
-        # df = df.iloc[:] - Вариант с удаленной шапкой у файла
-        columns = df.iloc[13, :]
-        df = df.iloc[14:, :]
-        df.columns = columns
-        os.remove(final_doc)  # Что делает команда Функция remove() модуля os удаляет путь path к файлу
-
-        # Подключение к базе данных
-
-        connection = sqlite3.connect('database.db')
-        cur = connection.cursor()
-
-        # Вставка данных из DataFrame в бд
-
-        for _, row in df.iterrows():
-            article = str(row.iloc[1])
-            name = row.iloc[2]
-            quantity = row.iloc[5]
-            price_one = row.iloc[6]
-            amount = row.iloc[9]
-            weight = row.iloc[7]
-            eng_name = row.iloc[3]
-
-            cur.execute('''
-            INSERT INTO data (article, name, quantity, price_one, amount, weight, eng_name) VALUES(?,?,?,?,?,?,?)
-            ''', (article.strip(), name, quantity, price_one, amount, weight, eng_name))
-
-        connection.commit()
-        cur.close()
-        connection.close()
-
+        handle_excel_file(final_doc)
+        os.remove(final_doc)
         bot.send_message(message.chat.id, 'Данные успешно загружены в базу данных!')
+
     except Exception as e:
         bot.reply_to(message.chat.id, f"Произошла ошибка при обработке файла: {e}")
 
 
-# Функция для поиска данных по артикулу
-def handle_search(message):
-    query = message.text.strip()
-
-    conn = sqlite3.connect('database.db')
-    cur = conn.cursor()
-
-    cur.execute('SELECT * FROM data WHERE article = ?', (query,))
-    result = cur.fetchone()  # Извлекает одну строку из набора результатов
-
-    if result:
-        response = f"Артикул: {result[1]}\nНазвание: {result[2]}({result[7]})\nКоличество штук: {result[3]}\n" \
-                   f"Цена единицы товара: {round(result[4], 2)} RUB" \
-                   f"\nОбщая стоимость: {math.trunc(result[5])} RUB\nВес: {result[6]} кг"
-    else:
-        response = "Ничего не найдено по данному запросу."
-
-    cur.close()
-    conn.close()
-
-    bot.reply_to(message, response)
-
-
 @bot.message_handler()
 def info(message):
-    """Handle other messages and search telegram id included"""
+    """Handle other messages and search telegram id included."""
     if message.text.lower() == 'привет':
         bot.reply_to(message,
                      f'Добрый день, {message.from_user.first_name} {message.from_user.last_name} ({message.from_user.username})')
