@@ -10,7 +10,7 @@ from bot_handlers import handle_search
 """Place your telegram bot token"""
 bot = telebot.TeleBot(BOT_TOKEN)
 
-ADMIN_IDS = [476525173]
+ADMIN_IDS = []
 """Add admin ids"""
 
 
