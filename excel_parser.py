@@ -6,9 +6,8 @@ from db import insert_data
 def handle_excel_file(file_path):
     """This function handle Excel file and parse him"""
     df = pd.read_excel(file_path)
-    # columns = df.iloc[:]
-    # df.columns = columns
-    # df = df.iloc[:] - Вариант с удаленной шапкой у файла excel
+    # df = df.iloc[:] #- Вариант с удаленной шапкой у файла excel
+    # Вариант с существующей шапкой в 14 строк(исходный инвойс)
     columns = df.iloc[13, :]
     df = df.iloc[14:, :]
     df.columns = columns
