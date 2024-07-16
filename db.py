@@ -1,6 +1,9 @@
+import os.path
 import sqlite3
 
 """This module contains functions for working with the database: create_db and insert_data."""
+
+
 # Создание базы данных и таблицы, если их еще нет
 def create_db():
     """Creating database with main table (data) if they not exist."""
@@ -35,3 +38,19 @@ def insert_data(article, name, quantity, price_one, amount, weight, eng_name):
     connection.commit()
     cur.close()
     connection.close()
+
+
+def clear_db():
+    """Function for clearing the table"""
+    connection = sqlite3.connect('database.db')
+    cur = connection.cursor()
+    cur.execute('DELETE FROM data')
+    connection.commit()
+    cur.close()
+    connection.close()
+
+
+def delete_db():
+    """Function for deleting the database"""
+    if os.path.exists('database.db'):
+        os.remove('database.db')

@@ -1,17 +1,13 @@
 import os
-
 import telebot
 from telebot import types
-from db import create_db
+from db import create_db, clear_db, delete_db
 from excel_parser import handle_excel_file
 from bot_handlers import handle_search
+from config import ADMIN_IDS, BOT_TOKEN
 
-# BOT_TOKEN = ''
-"""Place your telegram bot token"""
+
 bot = telebot.TeleBot(BOT_TOKEN)
-
-ADMIN_IDS = []
-"""Add admin ids"""
 
 
 # Описать функционал бота.
@@ -22,8 +18,9 @@ def send_welcome(message):
     start_button = types.KeyboardButton('Начать работу')
     markup.add(start_button)
     bot.send_message(message.chat.id, f"Привет {message.from_user.first_name}({message.from_user.username})! "
-                                      f"\nНажмите 'Начать работу' для продолжения."
-                                      f"\nВы также можете ввести команду id, чтобы узнать свой id в телеграмм",
+                                      f"\n1) Нажмите 'Начать работу' для продолжения."
+                                      f"\n2) Вы также можете ввести команду id, чтобы узнать свой id в телеграмм"
+                                      f"\n3) Вы можете очистить базу командой (clear database), если у вас достаточно прав.",
                      reply_markup=markup)
 
 
@@ -53,6 +50,20 @@ def prompt_article_search(message):
     msg = bot.send_message(message.chat.id, "Введите артикул для поиска:")
     bot.register_next_step_handler(msg, handle_search, bot)
 
+
+@bot.message_handler(func=lambda message: message.text == 'delete database' or message.text == 'clear database')
+def handle_db_deletion(message):
+    """The function clears or deletes the database"""
+    if message.from_user.id in ADMIN_IDS:
+        if message.text == 'delete database':
+            delete_db()
+            bot.send_message(message.chat.id, "База данных удалена.")
+        elif message.text == 'clear database':
+            clear_db()
+            bot.send_message(message.chat.id, "База данных очищена.")
+        create_db()
+    else:
+        bot.send_message(message.chat.id, "У вас нет прав на выполнение этой операции.")
 
 
 # Парсинг exel файла в дб(squlite) + добавление в дб
